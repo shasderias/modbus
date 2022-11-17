@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/shasderias/modbus/internal/databuilder"
 )
@@ -144,6 +145,22 @@ func (r *ReadRegisterResponse) Uint16() []uint16 {
 		vals[i] = binary.BigEndian.Uint16(r.values[i*2 : i*2+2])
 	}
 	return vals
+}
+
+func (r *ReadRegisterResponse) Float32() ([]float32, error) {
+	if len(r.values)%4 != 0 {
+		return nil, fmt.Errorf("modbus: need a multiple of 4 registers to interpret as float32s: %v", r.values)
+	}
+
+	vals := make([]float32, len(r.values)/4)
+	for i := 0; i < len(vals); i++ {
+		// Open Modbus TCPIP.doc 3/29/99
+		// Intel single precision real ... First register contains bits 15-0 ... Second register contains bits 31-16 ...
+		lo := uint32(binary.BigEndian.Uint16(r.values[i*4+0 : i*4+2]))
+		hi := uint32(binary.BigEndian.Uint16(r.values[i*4+2 : i*4+4]))
+		vals[i] = math.Float32frombits(hi<<16 | lo)
+	}
+	return vals, nil
 }
 
 type WriteSingleRegisterRequest struct {
