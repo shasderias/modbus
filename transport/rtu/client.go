@@ -24,6 +24,7 @@ type responseHandler func(request modbus.PDU, buf []byte, port io.Reader) ([]byt
 type Port interface {
 	io.ReadWriteCloser
 	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
 }
 
 func NewClient(port Port, cFns ...func(config *ClientConfig)) *Client {
@@ -63,6 +64,10 @@ func NewClient(port Port, cFns ...func(config *ClientConfig)) *Client {
 
 func (c *Client) WriteRequest(slaveAddress byte, r modbus.PDU) (modbus.PDU, error) {
 	reqFrame := assembleFrame(slaveAddress, r)
+
+	if err := c.port.SetWriteDeadline(time.Now().Add(c.conf.RequestTimeout)); err != nil {
+		return nil, err
+	}
 
 	n, err := c.port.Write(assembleFrame(slaveAddress, r))
 	if err != nil {
