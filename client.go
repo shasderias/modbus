@@ -293,7 +293,7 @@ func (c *Client) ReadRegisters(funcCode byte, startAddress, count int) (*ReadReg
 		}
 		return nil, &resp
 	default:
-		return nil, fmt.Errorf("client: unexpected function code: %d", rawResp.FunctionCode())
+		return nil, fmt.Errorf("client: unexpected function code: sent: 0x%x, received 0x%x", funcCode, rawResp.FunctionCode())
 	}
 }
 
