@@ -65,11 +65,11 @@ func StartDiagSlaveRTU(t *testing.T) serial.Port {
 
 	time.Sleep(1 * time.Second)
 
-	port, err := serial.Open(loopbackPort2, &serial.Config{
-		BaudRate: 19200,
-		DataBits: 8,
-		StopBits: serial.StopBits1,
-		Parity:   serial.ParityEven,
+	port, err := serial.Open(loopbackPort2, func(c *serial.Config) {
+		c.BaudRate = 19200
+		c.DataBits = 8
+		c.StopBits = serial.StopBits1
+		c.Parity = serial.ParityEven
 	})
 	if err != nil {
 		t.Fatal(err)
