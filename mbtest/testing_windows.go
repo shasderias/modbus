@@ -26,10 +26,10 @@ func envString(name, value string) string {
 	return envValue
 }
 
-func StartDiagSlaveTCP(t *testing.T) net.Conn {
+func StartDiagSlaveTCP(t *testing.T) (net.Conn, func()) {
 	exePath := path.Join(projectroot.Get(), "reference", "diagslave-3.4", "win", "diagslave.exe")
 
-	cmd := exec.Command(exePath)
+	cmd := exec.Command(exePath, "-p", "5502")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -40,12 +40,16 @@ func StartDiagSlaveTCP(t *testing.T) net.Conn {
 
 	time.Sleep(1 * time.Second)
 
-	conn, err := net.DialTimeout("tcp", ":502", 1*time.Second)
+	conn, err := net.DialTimeout("tcp", ":5502", 1*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return conn
+	cleanup := func() {
+		cmd.Process.Kill()
+	}
+
+	return conn, cleanup
 }
 
 func StartDiagSlaveRTU(t *testing.T) serial.Port {

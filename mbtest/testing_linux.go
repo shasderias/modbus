@@ -14,7 +14,7 @@ import (
 	"github.com/shasderias/modbus/internal/projectroot"
 )
 
-func StartDiagSlaveTCP(t *testing.T) net.Conn {
+func StartDiagSlaveTCP(t *testing.T) (net.Conn, func()) {
 	exePath := path.Join(projectroot.Get(), "reference", "diagslave-3.4", "x86_64-linux-gnu", "diagslave")
 
 	cmd := exec.Command(exePath, "-p", "5502")
@@ -33,7 +33,11 @@ func StartDiagSlaveTCP(t *testing.T) net.Conn {
 		t.Fatal(err)
 	}
 
-	return conn
+	cleanup := func() {
+		cmd.Process.Kill()
+	}
+
+	return conn, cleanup
 }
 
 func StartDiagSlaveRTU(t *testing.T) serial.Port {
@@ -52,11 +56,11 @@ func StartDiagSlaveRTU(t *testing.T) serial.Port {
 
 	time.Sleep(1 * time.Second)
 
-	port, err := serial.Open(port2, &serial.Config{
-		BaudRate: 19200,
-		DataBits: 8,
-		StopBits: serial.StopBits1,
-		Parity:   serial.ParityEven,
+	port, err := serial.Open(port2, func(c *serial.Config) {
+		c.BaudRate = 19200
+		c.DataBits = 8
+		c.StopBits = serial.StopBits1
+		c.Parity = serial.ParityEven
 	})
 	if err != nil {
 		t.Fatal(err)

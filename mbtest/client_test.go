@@ -2,6 +2,7 @@ package mbtest
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -23,7 +24,7 @@ func TestRTUClient(t *testing.T) {
 }
 
 func TestTCPClient(t *testing.T) {
-	conn := StartDiagSlaveTCP(t)
+	conn, cleanup := StartDiagSlaveTCP(t)
 
 	transport, err := tcp.NewClient(conn)
 	if err != nil {
@@ -37,6 +38,29 @@ func TestTCPClient(t *testing.T) {
 	defer client.Close()
 
 	testClient(t, client)
+
+	breakSuccess := make(chan struct{})
+
+	go func() {
+		for {
+			_, err := client.ReadHoldingRegisters(3, 30)
+			if err != nil {
+				t.Logf("got error: %v", err)
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		close(breakSuccess)
+	}()
+
+	time.Sleep(3 * time.Second)
+	cleanup()
+
+	select {
+	case <-time.After(1 * time.Second):
+		t.Fatal("expected client to return an error after connection was closed")
+	case <-breakSuccess:
+	}
 }
 
 func testClient(t *testing.T, client *modbus.Client) {
@@ -136,4 +160,8 @@ func testClient(t *testing.T, client *modbus.Client) {
 			t.Fatal(diff)
 		}
 	}
+}
+
+func TestTCPError(t *testing.T) {
+
 }

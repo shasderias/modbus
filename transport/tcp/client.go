@@ -67,12 +67,6 @@ func NewClient(c Conn, fns ...func(c *ClientConfig)) (*Client, error) {
 }
 
 func (c *Client) readLoop() {
-	defer func() {
-		c.closedMut.Lock()
-		c.closed = true
-		c.closedMut.Unlock()
-	}()
-
 	for {
 		err := func() (err error) {
 			var req *request
@@ -135,12 +129,10 @@ func (c *Client) readLoop() {
 			return nil
 		}()
 		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				return
-			}
 			c.log(err.Error())
+			c.Close()
+			return
 		}
-		// TODO: flush buffer before going again
 	}
 }
 
@@ -149,11 +141,6 @@ func (c *Client) log(msg string) {
 }
 
 func (c *Client) writeLoop() {
-	defer func() {
-		c.closedMut.Lock()
-		c.closed = true
-		c.closedMut.Unlock()
-	}()
 	for {
 		select {
 		case r := <-c.requestQueue:
@@ -217,7 +204,12 @@ func (c *Client) WriteRequest(unitID byte, r modbus.PDU) (modbus.PDU, error) {
 }
 
 func (c *Client) Close() error {
-	c.writeLoopDone <- struct{}{}
+	c.closedMut.Lock()
+	defer c.closedMut.Unlock()
+	if !c.closed {
+		close(c.writeLoopDone)
+	}
+	c.closed = true
 	return c.c.Close()
 }
 
